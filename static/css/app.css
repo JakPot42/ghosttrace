@@ -1,0 +1,217 @@
+/* GhostTrace — dark theme, consistent with suite */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #10161d;
+  --surface:   #161d27;
+  --border:    #222b35;
+  --text:      #e8edf2;
+  --muted:     #8a93a3;
+  --accent:    #4ea1ff;
+  --red:       #ff5050;
+  --orange:    #ffb24e;
+  --green:     #4caf80;
+  --yellow:    #f0c040;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: "Cascadia Code", "Consolas", monospace; font-size: 0.88em; }
+
+/* ── Header ── */
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.site-logo { font-size: 1.15rem; font-weight: 700; color: var(--accent); }
+.site-tagline { color: var(--muted); font-size: 0.85rem; flex: 1; }
+.site-nav { display: flex; gap: 1.2rem; }
+.site-nav a { color: var(--muted); font-size: 0.9rem; }
+.site-nav a:hover { color: var(--text); text-decoration: none; }
+
+/* ── Demo banner ── */
+.demo-banner {
+  background: #1a2233;
+  border-bottom: 2px solid var(--orange);
+  color: var(--orange);
+  font-size: 0.82rem;
+  padding: 0.45rem 2rem;
+  text-align: center;
+}
+
+/* ── Main ── */
+.main-content { flex: 1; max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; width: 100%; }
+
+/* ── Footer ── */
+.site-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 1rem 2rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badge-large { font-size: 0.9rem; padding: 0.25rem 0.75rem; }
+.badge-red    { background: rgba(255,80,80,.18); color: var(--red); border: 1px solid rgba(255,80,80,.3); }
+.badge-yellow { background: rgba(240,192,64,.15); color: var(--yellow); border: 1px solid rgba(240,192,64,.3); }
+.badge-green  { background: rgba(76,175,128,.15); color: var(--green); border: 1px solid rgba(76,175,128,.3); }
+.badge-gray   { background: rgba(138,147,163,.12); color: var(--muted); border: 1px solid var(--border); }
+
+.demo-tag { background: rgba(255,178,78,.15); color: var(--orange); border: 1px solid rgba(255,178,78,.3);
+            font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 3px;
+            text-transform: uppercase; vertical-align: middle; }
+.focal-tag { background: rgba(78,161,255,.15); color: var(--accent); border: 1px solid rgba(78,161,255,.3);
+             font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 3px;
+             text-transform: uppercase; vertical-align: middle; }
+
+/* ── Search hero ── */
+.search-hero { text-align: center; padding: 2.5rem 0 2rem; }
+.search-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.6rem; }
+.hero-sub { color: var(--muted); max-width: 580px; margin: 0 auto 1.8rem; }
+
+.search-form { display: flex; gap: 0.6rem; max-width: 560px; margin: 0 auto; }
+.search-form input {
+  flex: 1; padding: 0.65rem 1rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-size: 1rem;
+  outline: none;
+}
+.search-form input:focus { border-color: var(--accent); }
+.search-form button {
+  padding: 0.65rem 1.4rem;
+  background: var(--accent); color: #fff; font-weight: 600;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 1rem;
+  white-space: nowrap;
+}
+.search-form button:hover { background: #3b8ce0; }
+
+.search-error { color: var(--red); margin-top: 1rem; font-size: 0.9rem; }
+
+/* ── Candidates ── */
+.candidates-box { max-width: 560px; margin: 1.2rem auto 0; text-align: left; }
+.candidates-label { color: var(--muted); font-size: 0.88rem; margin-bottom: 0.5rem; }
+.candidates-list { list-style: none; }
+.candidates-list li { border-bottom: 1px solid var(--border); }
+.candidates-list a {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.3rem;
+  color: var(--text); font-size: 0.93rem;
+}
+.candidates-list a:hover { background: var(--surface); text-decoration: none; }
+.cand-name { flex: 1; }
+.cand-ticker { color: var(--accent); font-size: 0.82rem; font-weight: 600; }
+.cand-cik { color: var(--muted); font-size: 0.8rem; }
+
+/* ── Recent traces table ── */
+.recent-section { margin-top: 2.5rem; }
+.recent-section h2, .how-it-works h2 { font-size: 1.1rem; margin-bottom: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.trace-table, .findings-table, .entity-table, .links-table {
+  width: 100%; border-collapse: collapse; font-size: 0.9rem;
+}
+.trace-table th, .findings-table th, .entity-table th, .links-table th {
+  text-align: left; padding: 0.5rem 0.75rem;
+  background: var(--surface); color: var(--muted); font-size: 0.78rem;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+.trace-table td, .findings-table td, .entity-table td, .links-table td {
+  padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.trace-table tr:hover td { background: var(--surface); }
+
+.empty-state { color: var(--muted); font-style: italic; font-size: 0.9rem; }
+
+/* ── How it works ── */
+.how-it-works { margin-top: 2.5rem; }
+.steps { padding-left: 1.3rem; color: var(--muted); font-size: 0.9rem; }
+.steps li { margin-bottom: 0.5rem; }
+.steps strong { color: var(--text); }
+
+/* ── Trace detail ── */
+.trace-header { margin-bottom: 1.5rem; }
+.trace-title-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.trace-title-row h1 { font-size: 1.6rem; }
+.trace-meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
+
+.headline-box {
+  background: var(--surface); border-left: 3px solid var(--accent);
+  padding: 1rem 1.2rem; border-radius: 0 6px 6px 0; margin-bottom: 1.5rem;
+}
+.headline-text { font-size: 1.05rem; font-style: italic; color: var(--text); }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1.2rem 1.4rem; margin-bottom: 1.2rem;
+}
+.card h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
+           color: var(--muted); margin-bottom: 0.9rem; }
+
+/* ── Findings ── */
+.findings-list { padding-left: 1.3rem; }
+.findings-list li { margin-bottom: 0.45rem; font-size: 0.9rem; }
+
+.weight-cell { text-align: right; color: var(--red); font-weight: 700; }
+
+/* ── Graph ── */
+.graph-legend { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.7rem; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 3px; }
+.legend-dot.focal    { background: #4ea1ff; }
+.legend-dot.adversary{ background: #ff5050; }
+.legend-dot.secrecy  { background: #ffb24e; }
+.legend-dot.normal   { background: #8a93a3; }
+.graph-img { max-width: 100%; border-radius: 6px; display: block; }
+
+/* ── Entity / links tables ── */
+.alias-list { color: var(--muted); font-size: 0.78rem; margin-top: 0.2rem; }
+.pct-cell { text-align: right; font-weight: 600; }
+.undisclosed { color: var(--red); font-weight: 600; }
+.accession { color: var(--muted); font-size: 0.8rem; }
+.evidence-row td { padding-top: 0; padding-bottom: 0.6rem; }
+.evidence-quote { color: var(--muted); font-style: italic; font-size: 0.82rem; padding-left: 1.5rem; }
+
+/* ── Full report text ── */
+.full-text {
+  white-space: pre-wrap; font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.83rem; line-height: 1.65; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 1rem; overflow-x: auto;
+}
+
+/* ── Actions ── */
+.trace-actions { margin-top: 1.5rem; }
+.btn-secondary {
+  display: inline-block; padding: 0.5rem 1rem;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); border-radius: 6px; font-size: 0.9rem;
+}
+.btn-secondary:hover { color: var(--text); text-decoration: none; border-color: var(--accent); }

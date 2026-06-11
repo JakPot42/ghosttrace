@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ app_title }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="site-logo">GhostTrace</a>
+    <span class="site-tagline">Hidden Ownership &amp; Shell Company Tracer</span>
+    <nav class="site-nav">
+      <a href="/">Search</a>
+      <a href="/api/health">Status</a>
+    </nav>
+  </header>
+
+  {% if demo_mode %}
+  <div class="demo-banner">{{ demo_banner }}</div>
+  {% endif %}
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>GhostTrace — Portfolio demonstration only. Not a financial or legal advisory product.
+       All SEC data is public; all synthetic data is clearly labelled.</p>
+  </footer>
+</body>
+</html>

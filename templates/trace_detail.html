@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trace.company_name }} — GhostTrace{% endblock %}
+
+{% block content %}
+<div class="trace-header">
+  <div class="trace-title-row">
+    <h1>{{ trace.company_name }}</h1>
+    <span class="badge badge-large {{ trace.risk_badge_class }}">{{ trace.risk_level }} RISK</span>
+  </div>
+  <div class="trace-meta">
+    Score: <strong>{{ trace.risk_score }}/100</strong>
+    {% if trace.cik %}&nbsp;·&nbsp; CIK: <code>{{ trace.cik }}</code>{% endif %}
+    {% if trace.is_demo %}&nbsp;·&nbsp;<span class="demo-tag">SYNTHETIC DEMO DATA</span>{% endif %}
+    &nbsp;·&nbsp; Traced: {{ trace.created_at.strftime('%Y-%m-%d %H:%M UTC') }}
+  </div>
+</div>
+
+{% if trace.headline %}
+<div class="headline-box">
+  <p class="headline-text">{{ trace.headline }}</p>
+</div>
+{% endif %}
+
+<div class="trace-body">
+  <div class="trace-main">
+
+    <!-- Summary -->
+    {% if trace.summary %}
+    <section class="card">
+      <h2>Summary</h2>
+      <p>{{ trace.summary }}</p>
+    </section>
+    {% endif %}
+
+    <!-- Key Findings -->
+    {% if trace.key_findings %}
+    <section class="card">
+      <h2>Key Findings</h2>
+      <ul class="findings-list">
+        {% for f in trace.key_findings %}
+        <li>{{ f }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <!-- Risk Rule Breakdown -->
+    {% if trace.findings %}
+    <section class="card">
+      <h2>Rule-Based Risk Breakdown</h2>
+      <table class="findings-table">
+        <thead>
+          <tr><th>Rule</th><th>Detail</th><th>Weight</th></tr>
+        </thead>
+        <tbody>
+          {% for f in trace.findings %}
+          <tr>
+            <td><code>{{ f.rule }}</code></td>
+            <td>{{ f.detail }}</td>
+            <td class="weight-cell">+{{ f.weight }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    <!-- Ownership Graph -->
+    {% if trace.graph_image_path %}
+    <section class="card">
+      <h2>Ownership Graph</h2>
+      <div class="graph-legend">
+        <span class="legend-dot focal"></span> Focal company &nbsp;
+        <span class="legend-dot adversary"></span> Adversary jurisdiction &nbsp;
+        <span class="legend-dot secrecy"></span> Secrecy jurisdiction &nbsp;
+        <span class="legend-dot normal"></span> Standard
+      </div>
+      <img src="{{ trace.graph_image_path }}" alt="Ownership graph for {{ trace.company_name }}" class="graph-img">
+    </section>
+    {% endif %}
+
+    <!-- Entity Table -->
+    {% if trace.entities %}
+    <section class="card">
+      <h2>Entities ({{ trace.entities | length }})</h2>
+      <table class="entity-table">
+        <thead>
+          <tr><th>Name</th><th>Type</th><th>Jurisdiction</th><th>Risk Cat.</th></tr>
+        </thead>
+        <tbody>
+          {% for e in trace.entities %}
+          <tr>
+            <td>
+              {{ e.canonical_name }}
+              {% if e.is_focal %}<span class="focal-tag">focal</span>{% endif %}
+              {% if e.aliases %}
+              <div class="alias-list">also: {{ e.aliases | join(', ') }}</div>
+              {% endif %}
+            </td>
+            <td>{{ e.entity_type or '—' }}</td>
+            <td>{{ e.jurisdiction or '—' }}</td>
+            <td>
+              {% if e.jurisdiction_category %}
+              <span class="badge {{ e.category_badge_class }}">{{ e.jurisdiction_category }}</span>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    <!-- Ownership Links -->
+    {% if trace.links %}
+    <section class="card">
+      <h2>Ownership Links ({{ trace.links | length }})</h2>
+      <table class="links-table">
+        <thead>
+          <tr><th>Owner</th><th>Stake</th><th>Owned</th><th>Source</th></tr>
+        </thead>
+        <tbody>
+          {% for l in trace.links %}
+          <tr>
+            <td>{{ l.owner_name }}</td>
+            <td class="pct-cell">
+              {% if l.ownership_pct is not none %}{{ l.ownership_pct | round(1) }}%{% else %}<span class="undisclosed">undisclosed</span>{% endif %}
+            </td>
+            <td>{{ l.owned_name }}</td>
+            <td>
+              {% if l.source_accession %}
+              <code class="accession">{{ l.source_accession }}</code>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% if l.evidence_quote %}
+          <tr class="evidence-row">
+            <td colspan="4" class="evidence-quote">"{{ l.evidence_quote }}"</td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endif %}
+
+    <!-- Full Report Text -->
+    {% if trace.full_text %}
+    <section class="card">
+      <h2>Full Assessment</h2>
+      <pre class="full-text">{{ trace.full_text }}</pre>
+    </section>
+    {% endif %}
+
+  </div>
+</div>
+
+<div class="trace-actions">
+  <a href="/" class="btn-secondary">&larr; New search</a>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}GhostTrace — Search{% endblock %}
+
+{% block content %}
+<section class="search-hero">
+  <h1>Trace Hidden Ownership</h1>
+  <p class="hero-sub">Type a company name or ticker. GhostTrace pulls its SEC beneficial-ownership
+     filings, extracts every owner and subsidiary, and scores the structure for shell-company risk.</p>
+
+  <form action="/search" method="post" class="search-form">
+    <input type="text" name="query" placeholder="e.g. Microsoft, MSFT, Harborview Capital"
+           value="{{ query or '' }}" autocomplete="off" autofocus required>
+    <button type="submit">Trace &rarr;</button>
+  </form>
+
+  {% if search_error %}
+  <p class="search-error">{{ search_error }}</p>
+  {% endif %}
+
+  {% if candidates %}
+  <div class="candidates-box">
+    <p class="candidates-label">Multiple matches — select the right company:</p>
+    <ul class="candidates-list">
+      {% for c in candidates %}
+      <li>
+        <a href="/trace?cik={{ c.cik }}&name={{ c.name | urlencode }}">
+          <span class="cand-name">{{ c.name }}</span>
+          {% if c.ticker %}<span class="cand-ticker">{{ c.ticker }}</span>{% endif %}
+          <span class="cand-cik">CIK {{ c.cik }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</section>
+
+<section class="recent-section">
+  <h2>Recent Traces</h2>
+  {% if recent_traces %}
+  <table class="trace-table">
+    <thead>
+      <tr>
+        <th>Company</th>
+        <th>Risk</th>
+        <th>Score</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in recent_traces %}
+      <tr>
+        <td><a href="/trace/{{ t.id }}">{{ t.company_name }}{% if t.is_demo %} <span class="demo-tag">DEMO</span>{% endif %}</a></td>
+        <td><span class="badge {{ t.risk_badge_class }}">{{ t.risk_level }}</span></td>
+        <td>{{ t.risk_score }}</td>
+        <td>{{ t.created_at.strftime('%Y-%m-%d') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">No traces yet. Search for a company above.</p>
+  {% endif %}
+</section>
+
+<section class="how-it-works">
+  <h2>How It Works</h2>
+  <ol class="steps">
+    <li><strong>EDGAR pull</strong> — fetches SC 13D/13G beneficial ownership reports, 10-K Exhibit 21 subsidiary lists, and DEF 14A proxy ownership tables from SEC EDGAR.</li>
+    <li><strong>Claude extraction</strong> — Claude Haiku reads each document and extracts every owner, subsidiary, and affiliate with their jurisdiction, stake percentage, and supporting quote.</li>
+    <li><strong>Entity resolution</strong> — name variants are fuzzy-matched and merged (e.g. "Harborview Capital Partners LP" and "Harborview Capital Partners, L.P.").</li>
+    <li><strong>Risk scoring</strong> — deterministic rules score the ownership structure: secrecy jurisdictions, adversary exposure, chain depth, shared registered agents, undisclosed stakes.</li>
+    <li><strong>Ownership graph</strong> — NetworkX + matplotlib render the complete ownership network as a PNG, colored by risk category.</li>
+    <li><strong>Report</strong> — Claude writes the narrative explanation. Every finding cites a specific SEC filing accession number.</li>
+  </ol>
+</section>
+{% endblock %}
