@@ -16,7 +16,7 @@ import os
 from sqlalchemy.orm import Session
 
 from config import GRAPH_OUTPUT_DIR
-from models import Entity, OwnershipLink, Trace
+from models import Entity, Filing, OwnershipLink, Trace
 from risk_engine import assess, jurisdiction_category
 
 _SHARED_AGENT_ADDR = "Suite 400, 12 Quayside Lane, George Town, Cayman Islands"
@@ -113,6 +113,109 @@ SEED_LINKS = [
         "ownership_pct": 9.0,
         "evidence_quote": "Reporting person beneficially owns 9.0% of outstanding interests.",
         "source": "DEMO-13G-002",
+    },
+]
+
+# Fictional filing excerpts backing the demo trace. These are the documents
+# the seed entities and links "came from" — they make the semantic search
+# demo work with no API key, and searching them surfaces the exact passages
+# the findings cite. cik=0 marks them as demo documents (no EDGAR link).
+SEED_FILINGS = [
+    {
+        "accession_number": "DEMO-13D-001",
+        "document_name": "demo-13d-001.txt",
+        "form": "SC 13D",
+        "filing_date": "2026-03-17",
+        "text": """SCHEDULE 13D — DEMONSTRATION DOCUMENT (FICTIONAL)
+
+Item 2. Identity and Background.
+
+This statement is filed by Meridian Holdings Ltd, a Cayman Islands exempted
+company ("Meridian"), with its registered office at Suite 400, 12 Quayside
+Lane, George Town, Cayman Islands. Meridian is a wholly owned subsidiary of
+Pelican Trust Services Ltd, a trust company organized under the laws of the
+British Virgin Islands ("Pelican"), with offices at Wickham Quay II, Road
+Town, Tortola.
+
+Item 4. Purpose of Transaction.
+
+Meridian Holdings Ltd beneficially owns 64.0% of the outstanding limited
+partnership interests of Harborview Capital Partners LP, a Delaware limited
+partnership. The interests were acquired for investment purposes. Meridian
+is a wholly owned subsidiary of Pelican Trust Services Ltd. No natural
+person has been identified in this statement as the ultimate beneficial
+owner of Pelican.
+
+Item 6. Contracts, Arrangements, Understandings.
+
+Except as described herein, there are no contracts, arrangements,
+understandings or relationships between the persons named in Item 2 and any
+other person with respect to the securities of the issuer.""",
+    },
+    {
+        "accession_number": "DEMO-13D-002",
+        "document_name": "demo-13d-002.txt",
+        "form": "SC 13D",
+        "filing_date": "2026-04-02",
+        "text": """SCHEDULE 13D AMENDMENT NO. 1 — DEMONSTRATION DOCUMENT (FICTIONAL)
+
+Item 2. Identity and Background.
+
+This amendment is filed to disclose that shares of Pelican Trust Services
+Ltd are held of record by Calloway Nominee Services Ltd as nominee.
+Calloway Nominee Services Ltd is a Cayman Islands company with its
+registered office at Suite 400, 12 Quayside Lane, George Town, Cayman
+Islands. Calloway acts solely in a nominee capacity; the identity of the
+beneficial owner or owners for whom Calloway holds such shares has not
+been disclosed in this statement.
+
+Item 5. Interest in Securities of the Issuer.
+
+The percentage interest held by Calloway Nominee Services Ltd in Pelican
+Trust Services Ltd is not stated. Calloway disclaims beneficial ownership
+of the shares held in its nominee capacity except to the extent of its
+pecuniary interest therein, if any.""",
+    },
+    {
+        "accession_number": "DEMO-13G-001",
+        "document_name": "demo-13g-001.txt",
+        "form": "SC 13G",
+        "filing_date": "2026-02-09",
+        "text": """SCHEDULE 13G — DEMONSTRATION DOCUMENT (FICTIONAL)
+
+Item 1. Issuer: Harborview Capital Partners LP (Delaware).
+
+Item 2. Reporting Person: Shenzhen Brightway Industrial Co Ltd, a company
+organized under the laws of the People's Republic of China, with its
+principal office at Tower B, Nanshan Technology Park, Shenzhen, Guangdong
+Province, China.
+
+Item 4. Ownership.
+
+The reporting person beneficially owns 11.0% of the outstanding limited
+partnership interests of the issuer. The interests are held directly. The
+reporting person certifies that the interests were not acquired and are
+not held for the purpose of or with the effect of changing or influencing
+the control of the issuer.""",
+    },
+    {
+        "accession_number": "DEMO-10K-001",
+        "document_name": "demo-ex21.txt",
+        "form": "10-K",
+        "filing_date": "2026-01-28",
+        "text": """EXHIBIT 21.1 — SUBSIDIARIES OF THE REGISTRANT
+DEMONSTRATION DOCUMENT (FICTIONAL)
+
+Subsidiaries of Harborview Capital Partners LP:
+
+Name                                    Jurisdiction of Organization
+Harborview GP Services LLC              Delaware, United States
+Harborview Credit Opportunities Fund    Delaware, United States
+
+The registrant's general partner interests are managed through Harborview
+GP Services LLC. Certain limited partnership interests of the registrant
+are held by Meridian Holdings Ltd (Cayman Islands); see the registrant's
+beneficial ownership disclosures for further detail.""",
     },
 ]
 
@@ -240,6 +343,15 @@ def load_seed_data(db: Session) -> dict:
             evidence_quote=link["evidence_quote"],
             source_accession=link["source"],
         ))
+
+    # Demo filing documents — cik=0 marks them as fictional (no EDGAR link).
+    # The vector store indexes these at startup via reindex_from_db.
+    for f in SEED_FILINGS:
+        if not db.query(Filing).filter_by(
+            accession_number=f["accession_number"],
+            document_name=f["document_name"],
+        ).first():
+            db.add(Filing(cik=0, **f))
 
     # Graph PNG — pure pip dependencies (networkx + matplotlib), no graphviz,
     # so unlike FriendShore this works identically on Render. Guarded anyway:

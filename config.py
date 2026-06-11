@@ -136,6 +136,27 @@ OFAC_SDN_CSV_URL = "https://www.treasury.gov/ofac/downloads/sdn.csv"
 OFAC_MATCH_THRESHOLD = 90  # fuzzy score required to flag an SDN match
 
 # ---------------------------------------------------------------------------
+# Semantic search (milestone 2)
+#
+# ChromaDB runs embedded and in-memory (EphemeralClient). Persistence is
+# pointless on Render free tier — the disk is wiped on every restart along
+# with SQLite — so the index is rebuilt from the Filing table at startup.
+#
+# Embeddings are a deliberate departure from Chroma's default. The default
+# (all-MiniLM via onnxruntime) downloads an ~80MB model on first use and
+# holds ~200MB of RAM — on a 512MB free-tier instance that cold-starts on
+# every wake, that means multi-minute cold starts and likely OOM. We use a
+# dependency-free hashed bag-of-words embedder instead: deterministic,
+# instant, identical locally and deployed. The tradeoff is lexical matching
+# rather than true semantics; the embedder is one function and swappable.
+# ---------------------------------------------------------------------------
+
+EMBED_DIM = 512            # hashed embedding dimensionality
+CHUNK_CHARS = 1200         # filing text chunk size for indexing
+CHUNK_OVERLAP = 200        # overlap between adjacent chunks (citation context)
+SEARCH_RESULTS_K = 8       # results returned per filing search
+
+# ---------------------------------------------------------------------------
 # Output + database
 # ---------------------------------------------------------------------------
 

@@ -50,13 +50,41 @@ def normalize_name(name: str) -> str:
 
 
 def similarity(a: str, b: str) -> float:
-    """0-100 similarity between two normalized names."""
+    """0-100 similarity between two normalized names.
+
+    Takes the max of three measures so word order and partial overlap don't
+    defeat the match:
+      - direct: SequenceMatcher on the normalized strings
+      - token-sort: same, after sorting tokens ("Capital Partners Harborview"
+        vs "Harborview Capital Partners")
+      - token-set: Jaccard overlap of token sets — only reaches 100 when the
+        token sets are identical, so it can trigger auto-merge only for pure
+        reorderings; partial overlaps land in the adjudication band
+    """
     na, nb = normalize_name(a), normalize_name(b)
     if not na or not nb:
         return 0.0
     if na == nb:
         return 100.0
-    return SequenceMatcher(None, na, nb).ratio() * 100
+    direct = SequenceMatcher(None, na, nb).ratio()
+    ta, tb = na.split(), nb.split()
+    token_sort = SequenceMatcher(None, " ".join(sorted(ta)), " ".join(sorted(tb))).ratio()
+    sa, sb = set(ta), set(tb)
+    token_set = len(sa & sb) / len(sa | sb) if (sa | sb) else 0.0
+    return max(direct, token_sort, token_set) * 100
+
+
+def _jurisdictions_conflict(a: str | None, b: str | None) -> bool:
+    """True when both jurisdictions are stated and genuinely disagree.
+    Substring containment ('Cayman Islands' vs 'Grand Cayman, Cayman
+    Islands') is not a conflict. Two same-named entities in different
+    jurisdictions is a classic shell pattern — they must never auto-merge."""
+    if not a or not b:
+        return False
+    ja, jb = a.strip().lower(), b.strip().lower()
+    if not ja or not jb:
+        return False
+    return ja not in jb and jb not in ja
 
 
 def _merge_into(canonical: dict, raw: dict) -> None:
@@ -102,6 +130,17 @@ def resolve_entities(
     """
     resolved: list[dict] = []
     alias_map: dict[str, str] = {}
+    # Memoize adjudicator verdicts per run — the same name pair recurs when
+    # an entity appears in several filings, and each Claude call costs money.
+    verdict_cache: dict[frozenset[str], bool] = {}
+
+    def _ask(name_a: str, name_b: str) -> bool:
+        if adjudicator is None:
+            return False
+        key = frozenset((name_a, name_b))
+        if key not in verdict_cache:
+            verdict_cache[key] = adjudicator(name_a, name_b)
+        return verdict_cache[key]
 
     for raw in raw_entities:
         name = (raw.get("name") or "").strip()
@@ -109,20 +148,31 @@ def resolve_entities(
             continue
         raw = {**raw, "name": name}
 
+        # Best match across each canonical's name AND its aliases — a new
+        # variant is often closer to a previously merged alias than to the
+        # canonical spelling.
         best: dict | None = None
         best_score = 0.0
         for canonical in resolved:
-            score = similarity(name, canonical["canonical_name"])
-            if score > best_score:
-                best_score = score
-                best = canonical
+            for variant in [canonical["canonical_name"], *canonical["aliases"]]:
+                score = similarity(name, variant)
+                if score > best_score:
+                    best_score = score
+                    best = canonical
 
         merged = False
         if best is not None:
-            if best_score >= FUZZY_AUTO_MERGE_THRESHOLD:
+            conflict = _jurisdictions_conflict(
+                raw.get("jurisdiction"), best.get("jurisdiction")
+            )
+            if best_score >= FUZZY_AUTO_MERGE_THRESHOLD and not conflict:
                 merged = True
-            elif best_score >= FUZZY_ADJUDICATE_THRESHOLD and adjudicator is not None:
-                merged = adjudicator(name, best["canonical_name"])
+            elif best_score >= FUZZY_ADJUDICATE_THRESHOLD or (
+                best_score >= FUZZY_AUTO_MERGE_THRESHOLD and conflict
+            ):
+                # Conflicting jurisdictions demote an auto-merge to the
+                # adjudication band; with no adjudicator they stay distinct.
+                merged = _ask(name, best["canonical_name"])
 
         if merged and best is not None:
             _merge_into(best, raw)

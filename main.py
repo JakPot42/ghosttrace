@@ -24,9 +24,10 @@ from edgar_client import (
 )
 from entity_resolver import normalize_name, resolve_entities, rewrite_links
 from graph_builder import build_graph_png
-from models import Entity, OwnershipLink, Trace
+from models import Entity, Filing, OwnershipLink, Trace
 from risk_engine import assess, jurisdiction_category
 from seed_data import load_seed_data
+from vector_store import get_store, reindex_from_db
 
 import os
 
@@ -38,6 +39,12 @@ async def lifespan(_app: FastAPI):
     db = SessionLocal()
     try:
         load_seed_data(db)
+        # Rebuild the in-memory search index from the Filing table. Wrapped
+        # so a search-layer failure can never take down the whole app.
+        try:
+            reindex_from_db(db)
+        except Exception:
+            pass
     finally:
         db.close()
     yield
@@ -137,7 +144,28 @@ def run_trace(
         if not doc_name:
             continue
 
-        text = fetch_document_text(cik, acc, doc_name)
+        # Filing cache: SQLite first, EDGAR only on a miss. Fetched documents
+        # are stored (citations need them anyway) and indexed for search.
+        cached = db.query(Filing).filter_by(
+            accession_number=acc, document_name=doc_name
+        ).first()
+        if cached:
+            text = cached.text
+        else:
+            text = fetch_document_text(cik, acc, doc_name)
+            if text:
+                db.add(Filing(
+                    cik=cik, accession_number=acc, document_name=doc_name,
+                    form=form, filing_date=date, text=text,
+                ))
+                db.commit()
+                try:
+                    get_store().add_filing(
+                        accession_number=acc, document_name=doc_name,
+                        form=form, filing_date=date, cik=cik, text=text,
+                    )
+                except Exception:
+                    pass
         if not text:
             continue
 
@@ -252,6 +280,28 @@ def trace_detail(request: Request, trace_id: int, db: Session = Depends(get_db))
 
 
 # ---------------------------------------------------------------------------
+# Filing search — semantic search across all cached filing text
+# ---------------------------------------------------------------------------
+
+@app.get("/filings", response_class=HTMLResponse)
+def filing_search(request: Request, q: str = "", db: Session = Depends(get_db)):
+    results = []
+    error = None
+    if q.strip():
+        try:
+            results = get_store().search(q)
+        except Exception:
+            error = "Search index unavailable."
+    indexed = db.query(Filing).count()
+    return _template(request, "filings.html", {
+        "query": q,
+        "results": results,
+        "indexed_filings": indexed,
+        "search_error": error,
+    })
+
+
+# ---------------------------------------------------------------------------
 # Seed / health routes
 # ---------------------------------------------------------------------------
 
@@ -268,5 +318,11 @@ def seed(db: Session = Depends(get_db)):
 def health(db: Session = Depends(get_db)):
     trace_count = db.query(Trace).count()
     entity_count = db.query(Entity).count()
+    filing_count = db.query(Filing).count()
+    try:
+        indexed_chunks = get_store().count()
+    except Exception:
+        indexed_chunks = 0
     return {"status": "ok", "traces": trace_count, "entities": entity_count,
+            "filings": filing_count, "indexed_chunks": indexed_chunks,
             "demo_mode": DEMO_MODE}

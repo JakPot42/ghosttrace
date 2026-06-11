@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Filing Search — GhostTrace{% endblock %}
+
+{% block content %}
+<section class="search-hero">
+  <h1>Search Filing Text</h1>
+  <p class="hero-sub">Vector search across every SEC filing GhostTrace has fetched and cached
+     ({{ indexed_filings }} document{{ '' if indexed_filings == 1 else 's' }} indexed).
+     Results cite the source filing.</p>
+
+  <form action="/filings" method="get" class="search-form">
+    <input type="text" name="q" placeholder='e.g. nominee, beneficial owner, registered office'
+           value="{{ query or '' }}" autocomplete="off" autofocus>
+    <button type="submit">Search</button>
+  </form>
+
+  {% if search_error %}
+  <p class="search-error">{{ search_error }}</p>
+  {% endif %}
+</section>
+
+{% if query and not results and not search_error %}
+<p class="empty-state">No matching passages found for "{{ query }}".</p>
+{% endif %}
+
+{% if results %}
+<section class="results-section">
+  <h2>{{ results | length }} passage{{ '' if results|length == 1 else 's' }}</h2>
+  {% for r in results %}
+  <div class="card result-card">
+    <div class="result-meta">
+      <span class="badge badge-gray">{{ r.form }}</span>
+      <span class="result-date">{{ r.filing_date }}</span>
+      {% if r.cik %}
+      <a class="accession" href="https://www.sec.gov/Archives/edgar/data/{{ r.cik }}/{{ r.accession_number | replace('-', '') }}/{{ r.document_name }}"
+         target="_blank" rel="noopener">{{ r.accession_number }}</a>
+      {% else %}
+      <code class="accession">{{ r.accession_number }}</code>
+      <span class="demo-tag">DEMO</span>
+      {% endif %}
+      <span class="result-score">relevance {{ r.score }}</span>
+    </div>
+    <p class="result-text">{{ r.text }}</p>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

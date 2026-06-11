@@ -155,3 +155,101 @@ class TestRewriteLinks:
 
     def test_empty_links(self):
         assert rewrite_links([], {}) == []
+
+
+# ---------------------------------------------------------------------------
+# Milestone 2 hardening
+# ---------------------------------------------------------------------------
+
+class TestTokenReorderMatching:
+    def test_reordered_tokens_score_100(self):
+        assert similarity("Capital Partners Harborview LP", "Harborview Capital Partners LP") == 100.0
+
+    def test_reordered_tokens_auto_merge(self):
+        raw = [
+            _make("Harborview Capital Partners LP"),
+            _make("Capital Partners Harborview, L.P."),
+        ]
+        resolved, _ = resolve_entities(raw)
+        assert len(resolved) == 1
+
+    def test_partial_overlap_lands_below_automerge(self):
+        # Shared tokens but genuinely different names must not score 100
+        s = similarity("Atlas Capital Ltd", "Atlas Holdings Ltd")
+        assert s < 92
+
+
+class TestAliasMatching:
+    def test_new_variant_matches_via_alias(self):
+        # Third sighting is closest to the merged alias, not the canonical
+        raw = [
+            _make("Meridian Holdings Ltd"),
+            _make("Meridian Holdings Limited"),
+            _make("MERIDIAN HOLDINGS LIMITED."),
+        ]
+        resolved, alias_map = resolve_entities(raw)
+        assert len(resolved) == 1
+        assert len(alias_map) == 3
+
+
+class TestJurisdictionConflictGuard:
+    def test_same_name_different_jurisdiction_not_auto_merged(self):
+        # Classic shell pattern: identical names, Cayman vs Delaware.
+        # Without an adjudicator they must stay distinct.
+        raw = [
+            {**_make("Meridian Holdings Ltd", jur="Cayman Islands")},
+            {**_make("Meridian Holdings Ltd", jur="Delaware, United States")},
+        ]
+        resolved, _ = resolve_entities(raw)
+        assert len(resolved) == 2
+
+    def test_conflict_routes_to_adjudicator(self):
+        called = []
+
+        def adjudicator(a, b):
+            called.append((a, b))
+            return True
+
+        raw = [
+            {**_make("Meridian Holdings Ltd", jur="Cayman Islands")},
+            {**_make("Meridian Holdings Ltd", jur="Delaware, United States")},
+        ]
+        resolved, _ = resolve_entities(raw, adjudicator=adjudicator)
+        assert len(called) == 1
+        assert len(resolved) == 1  # adjudicator said merge
+
+    def test_substring_jurisdictions_do_not_conflict(self):
+        raw = [
+            {**_make("Meridian Holdings Ltd", jur="Cayman Islands")},
+            {**_make("Meridian Holdings Ltd", jur="Grand Cayman, Cayman Islands")},
+        ]
+        resolved, _ = resolve_entities(raw)
+        assert len(resolved) == 1
+
+    def test_missing_jurisdiction_does_not_block_merge(self):
+        raw = [
+            {**_make("Meridian Holdings Ltd", jur="Cayman Islands")},
+            {**_make("Meridian Holdings Ltd", jur=None)},
+        ]
+        resolved, _ = resolve_entities(raw)
+        assert len(resolved) == 1
+
+
+class TestAdjudicatorCaching:
+    def test_same_pair_asked_once(self):
+        calls = []
+
+        def adjudicator(a, b):
+            calls.append((a, b))
+            return False
+
+        # Same name in conflicting jurisdictions recurs three times — the
+        # conflict demotes each to adjudication, but the identical question
+        # must hit the cache after the first ask.
+        raw = [
+            {**_make("Meridian Holdings Ltd", jur="Cayman Islands")},
+            {**_make("Meridian Holdings Ltd", jur="Delaware, United States")},
+            {**_make("Meridian Holdings Ltd", jur="Delaware, United States")},
+        ]
+        resolve_entities(raw, adjudicator=adjudicator)
+        assert len(calls) == 1
