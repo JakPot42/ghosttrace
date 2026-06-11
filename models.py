@@ -57,6 +57,14 @@ class Trace(Base):
     full_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     graph_image_path: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
 
+    # Milestone 3 — OFAC screening
+    ofac_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    _ofac_hits_json: Mapped[Optional[str]] = mapped_column("ofac_hits_json", Text, nullable=True)
+
+    # Milestone 3 — Deep Trace agentic loop
+    deep_trace_ran_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    _deep_trace_json: Mapped[Optional[str]] = mapped_column("deep_trace_json", Text, nullable=True)
+
     entities: Mapped[list["Entity"]] = relationship(
         "Entity", back_populates="trace", cascade="all, delete-orphan"
     )
@@ -79,6 +87,22 @@ class Trace(Base):
     @key_findings.setter
     def key_findings(self, val: list[str]) -> None:
         self._key_findings = json.dumps(val)
+
+    @property
+    def ofac_hits(self) -> list[dict]:
+        return json.loads(self._ofac_hits_json) if self._ofac_hits_json else []
+
+    @ofac_hits.setter
+    def ofac_hits(self, val: list[dict]) -> None:
+        self._ofac_hits_json = json.dumps(val)
+
+    @property
+    def deep_trace(self) -> dict | None:
+        return json.loads(self._deep_trace_json) if self._deep_trace_json else None
+
+    @deep_trace.setter
+    def deep_trace(self, val: dict) -> None:
+        self._deep_trace_json = json.dumps(val)
 
     @property
     def risk_badge_class(self) -> str:

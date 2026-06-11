@@ -124,16 +124,28 @@ RISK_LEVEL_HIGH = 60
 RISK_LEVEL_MEDIUM = 30
 
 # ---------------------------------------------------------------------------
-# OFAC sanctions check (milestone 3 — declared now so the design accounts
-# for it)
+# OFAC sanctions check (milestone 3)
 #
-# FLAG: Treasury reorganized its sanctions-list hosting in recent years.
-# Verify this URL against the current OFAC site before building the OFAC
-# module — do not assume it still resolves.
+# URL verified June 2026: www.treasury.gov/ofac/downloads/ still serves the
+# legacy flat files. sdn.csv has primary SDN names; alt.csv has AKA aliases
+# for the same entry numbers. Both must be downloaded for complete coverage.
 # ---------------------------------------------------------------------------
 
 OFAC_SDN_CSV_URL = "https://www.treasury.gov/ofac/downloads/sdn.csv"
-OFAC_MATCH_THRESHOLD = 90  # fuzzy score required to flag an SDN match
+OFAC_SDN_ALT_URL = "https://www.treasury.gov/ofac/downloads/alt.csv"
+OFAC_MATCH_THRESHOLD = 90  # fuzzy score (token_sort_ratio) to flag a candidate
+RISK_WEIGHT_OFAC_CANDIDATE = 35  # per candidate hit — requires human verification
+
+# ---------------------------------------------------------------------------
+# Deep Trace agentic loop (milestone 3)
+#
+# Claude is given two tools (investigate_entity, search_cached_filings) and
+# a fixed call budget. The budget is the only thing that bounds API cost —
+# Claude decides which entities to pursue; we decide how many times it can.
+# ---------------------------------------------------------------------------
+
+DEEP_TRACE_MAX_TOOL_CALLS = 5
+DEEP_TRACE_MAX_TOKENS = 2000
 
 # ---------------------------------------------------------------------------
 # Semantic search (milestone 2)

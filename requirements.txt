@@ -8,3 +8,4 @@ networkx>=3.4.2
 matplotlib>=3.9.3
 python-dotenv>=1.0.1
 chromadb>=1.0.0
+rapidfuzz>=3.0.0

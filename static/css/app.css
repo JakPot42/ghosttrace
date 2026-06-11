@@ -226,3 +226,27 @@ code { font-family: "Cascadia Code", "Consolas", monospace; font-size: 0.88em; }
   color: var(--muted); border-radius: 6px; font-size: 0.9rem;
 }
 .btn-secondary:hover { color: var(--text); text-decoration: none; border-color: var(--accent); }
+.btn-primary {
+  display: inline-block; padding: 0.5rem 1.1rem; cursor: pointer;
+  background: var(--accent); border: none; color: #fff;
+  border-radius: 6px; font-size: 0.9rem; font-family: inherit;
+}
+.btn-primary:hover { opacity: 0.88; }
+
+/* ── OFAC alerts ── */
+.card-warning { border-color: rgba(255,178,78,.35); }
+.card-warning h2 { color: var(--orange); }
+.ofac-disclaimer { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem;
+                   background: rgba(255,178,78,.06); border-left: 3px solid var(--orange);
+                   padding: 0.5rem 0.8rem; border-radius: 0 4px 4px 0; }
+.no-hits { color: var(--green); font-size: 0.9rem; }
+
+/* ── Deep Trace ── */
+.tool-log { margin-bottom: 1.2rem; }
+.tool-log h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
+               color: var(--muted); margin-bottom: 0.6rem; }
+.tool-step { font-size: 0.82rem; padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+.tool-step:last-child { border-bottom: none; }
+.tool-name { color: var(--accent); }
+.tool-input { color: var(--muted); }
+.error-note { color: var(--red); font-size: 0.85rem; margin-top: 0.5rem; }

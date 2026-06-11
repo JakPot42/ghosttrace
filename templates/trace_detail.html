@@ -153,6 +153,82 @@
     </section>
     {% endif %}
 
+    <!-- OFAC SDN Candidate Alerts -->
+    {% if trace.ofac_hits %}
+    <section class="card card-warning">
+      <h2>&#9888; OFAC SDN Candidate Alerts ({{ trace.ofac_hits | length }})</h2>
+      <p class="ofac-disclaimer">
+        These are algorithmic candidates based on fuzzy name matching against the U.S. Treasury
+        OFAC Specially Designated Nationals list. A candidate match is <strong>not</strong> a
+        confirmed sanctions violation. Manual verification by a qualified compliance professional
+        is required before any action.
+      </p>
+      <table class="findings-table">
+        <thead>
+          <tr><th>Trace Entity</th><th>SDN List Name</th><th>Match</th><th>Program</th><th>Type</th></tr>
+        </thead>
+        <tbody>
+          {% for hit in trace.ofac_hits %}
+          <tr>
+            <td>{{ hit.entity_name }}</td>
+            <td><strong>{{ hit.sdn_name }}</strong></td>
+            <td class="weight-cell">{{ hit.score }}%</td>
+            <td><code>{{ hit.sdn_program or '—' }}</code></td>
+            <td>{{ hit.sdn_type or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% elif trace.ofac_checked_at %}
+    <section class="card">
+      <h2>OFAC SDN Check</h2>
+      <p class="no-hits">No candidate matches found in the OFAC SDN list
+        (checked {{ trace.ofac_checked_at.strftime('%Y-%m-%d') }}).</p>
+    </section>
+    {% endif %}
+
+    <!-- Deep Trace Results -->
+    {% if trace.deep_trace %}
+    <section class="card">
+      <h2>Deep Trace Analysis
+        <span class="badge badge-gray">{{ trace.deep_trace.tool_calls_used }}/{{ trace.deep_trace.max_calls }} tool calls</span>
+      </h2>
+
+      {% if trace.deep_trace.tool_call_log %}
+      <div class="tool-log">
+        <h3>Investigation Steps</h3>
+        {% for step in trace.deep_trace.tool_call_log %}
+        <div class="tool-step">
+          <code class="tool-name">{{ step.tool }}</code>
+          &rarr;
+          <span class="tool-input">{{ step.input }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if trace.deep_trace.synthesis %}
+      <h3>Synthesis</h3>
+      <pre class="full-text">{{ trace.deep_trace.synthesis }}</pre>
+      {% endif %}
+
+      {% if trace.deep_trace.error %}
+      <p class="error-note">Deep Trace encountered an error: {{ trace.deep_trace.error }}</p>
+      {% endif %}
+    </section>
+    {% elif not trace.is_demo %}
+    <section class="card">
+      <h2>Deep Trace</h2>
+      <p>Run a bounded agentic investigation: Claude will use up to
+        {{ deep_trace_max_calls }} EDGAR lookups to follow up on the most
+        suspicious entities in the ownership network.</p>
+      <form method="post" action="/trace/{{ trace.id }}/deep-trace" style="margin-top:1rem">
+        <button type="submit" class="btn-primary">Run Deep Trace (&#8804;{{ deep_trace_max_calls }} tool calls)</button>
+      </form>
+    </section>
+    {% endif %}
+
   </div>
 </div>
 

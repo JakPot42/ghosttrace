@@ -13,7 +13,16 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claude_extractor import ExtractorError, extract_entities, generate_risk_report
-from config import APP_TITLE, DEMO_BANNER, DEMO_MODE, MAX_FILINGS_PER_TRACE
+from config import (
+    APP_TITLE,
+    DEMO_BANNER,
+    DEMO_MODE,
+    DEEP_TRACE_MAX_TOOL_CALLS,
+    MAX_FILINGS_PER_TRACE,
+    RISK_LEVEL_HIGH,
+    RISK_LEVEL_MEDIUM,
+    RISK_WEIGHT_OFAC_CANDIDATE,
+)
 from database import SessionLocal, get_db, init_db
 from edgar_client import (
     fetch_document_text,
@@ -25,11 +34,14 @@ from edgar_client import (
 from entity_resolver import normalize_name, resolve_entities, rewrite_links
 from graph_builder import build_graph_png
 from models import Entity, Filing, OwnershipLink, Trace
+from deep_trace import run_deep_trace
+from ofac_checker import screen_entities as ofac_screen
 from risk_engine import assess, jurisdiction_category
 from seed_data import load_seed_data
 from vector_store import get_store, reindex_from_db
 
 import os
+from datetime import datetime, timezone
 
 
 @asynccontextmanager
@@ -202,6 +214,33 @@ def run_trace(
     # Score
     result = assess(resolved, links, name)
 
+    # OFAC SDN screening — runs after structural scoring; adds candidate findings
+    ofac_hits: list[dict] = []
+    ofac_checked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    try:
+        entity_names = [e["canonical_name"] for e in resolved]
+        raw_hits = ofac_screen(entity_names)
+        for hit in raw_hits:
+            ofac_hits.append(hit._asdict())
+            result["findings"].append({
+                "rule": "ofac_candidate",
+                "detail": (
+                    f"{hit.entity_name} ≈ SDN '{hit.sdn_name}' "
+                    f"({hit.score}% match, program: {hit.sdn_program or 'unknown'}) "
+                    "— verification required"
+                ),
+                "weight": RISK_WEIGHT_OFAC_CANDIDATE,
+            })
+        if raw_hits:
+            result["score"] = min(100, sum(f["weight"] for f in result["findings"]))
+            result["level"] = (
+                "HIGH" if result["score"] >= RISK_LEVEL_HIGH
+                else "MEDIUM" if result["score"] >= RISK_LEVEL_MEDIUM
+                else "LOW"
+            )
+    except Exception:
+        pass  # OFAC check is non-blocking — never fails a trace
+
     # Generate narrative report
     try:
         report = generate_risk_report(
@@ -226,9 +265,11 @@ def run_trace(
         headline=report["headline"],
         summary=report["summary"],
         full_text=report["full_text"],
+        ofac_checked_at=ofac_checked_at,
     )
     trace.findings = result["findings"]
     trace.key_findings = report["key_findings"]
+    trace.ofac_hits = ofac_hits
     db.add(trace)
     db.flush()
 
@@ -276,7 +317,61 @@ def trace_detail(request: Request, trace_id: int, db: Session = Depends(get_db))
     trace = db.query(Trace).filter_by(id=trace_id).first()
     if not trace:
         raise HTTPException(status_code=404, detail="Trace not found")
-    return _template(request, "trace_detail.html", {"trace": trace})
+    return _template(request, "trace_detail.html", {
+        "trace": trace,
+        "deep_trace_max_calls": DEEP_TRACE_MAX_TOOL_CALLS,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Deep Trace — bounded agentic loop on an existing trace
+# ---------------------------------------------------------------------------
+
+@app.post("/trace/{trace_id}/deep-trace", response_class=HTMLResponse)
+def run_deep_trace_route(
+    request: Request,
+    trace_id: int,
+    db: Session = Depends(get_db),
+):
+    trace = db.query(Trace).filter_by(id=trace_id).first()
+    if not trace:
+        raise HTTPException(status_code=404, detail="Trace not found")
+    if trace.is_demo:
+        raise HTTPException(status_code=400, detail="Deep Trace is not available for demo traces")
+
+    # Build dicts from ORM objects for run_deep_trace
+    entities_for_dt = [
+        {
+            "canonical_name": e.canonical_name,
+            "entity_type": e.entity_type,
+            "jurisdiction": e.jurisdiction,
+        }
+        for e in trace.entities
+    ]
+    links_for_dt = [
+        {
+            "owner": l.owner_name,
+            "owned": l.owned_name,
+            "ownership_pct": l.ownership_pct,
+        }
+        for l in trace.links
+    ]
+
+    result = run_deep_trace(
+        company_name=trace.company_name,
+        entities=entities_for_dt,
+        links=links_for_dt,
+        risk_score=trace.risk_score,
+        risk_level=trace.risk_level,
+        findings=trace.findings,
+        db=db,
+    )
+
+    trace.deep_trace = result
+    trace.deep_trace_ran_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.commit()
+
+    return RedirectResponse(f"/trace/{trace_id}", status_code=303)
 
 
 # ---------------------------------------------------------------------------
