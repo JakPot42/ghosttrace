@@ -60,7 +60,7 @@ def _call(prompt: str, max_tokens: int, context: str, required: list[str]) -> di
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
-    except anthropic.APIError as exc:
+    except Exception as exc:
         raise ExtractorError(f"API error during {context}: {exc}") from exc
     data = _parse_json(msg.content[0].text, context)
     _require(data, required, context)

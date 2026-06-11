@@ -315,7 +315,7 @@ def run_deep_trace(
                     ),
                 })
 
-    except anthropic.APIError as exc:
+    except Exception as exc:
         return {
             "tool_calls_used": calls_used,
             "max_calls": DEEP_TRACE_MAX_TOOL_CALLS,
