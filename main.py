@@ -49,9 +49,8 @@ templates = Jinja2Templates(directory="templates")
 
 
 def _template(request: Request, name: str, ctx: dict) -> HTMLResponse:
-    ctx.update({"request": request, "app_title": APP_TITLE, "demo_mode": DEMO_MODE,
-                "demo_banner": DEMO_BANNER})
-    return templates.TemplateResponse(name, ctx)
+    ctx.update({"app_title": APP_TITLE, "demo_mode": DEMO_MODE, "demo_banner": DEMO_BANNER})
+    return templates.TemplateResponse(request, name, ctx)
 
 
 # ---------------------------------------------------------------------------
