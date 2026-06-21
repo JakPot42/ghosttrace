@@ -58,7 +58,7 @@ Shell companies obscure beneficial ownership across multiple jurisdictions and f
 ## Quick Start
 
 ```bash
-git clone https://github.com/JaKPoT-Sudo/ghosttrace.git
+git clone https://github.com/JakPot42/ghosttrace.git
 cd ghosttrace
 cp .env.example .env          # add ANTHROPIC_API_KEY=sk-ant-...
 python -m venv venv
