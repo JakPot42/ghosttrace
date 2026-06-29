@@ -6,6 +6,6 @@ sqlalchemy>=2.0.36
 anthropic>=0.40.0
 networkx>=3.4.2
 matplotlib>=3.9.3
-python-dotenv>=1.0.1
+python-dotenv>=1.2.2
 chromadb>=1.0.0  # PYSEC-2026-311: exploitable only in server mode; GhostTrace uses EphemeralClient (in-memory), not server mode — not exposed
 rapidfuzz>=3.0.0
